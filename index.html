@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#c4a8e0"/>
+<title>🌸 달력 스캐너</title>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --lav1: #f3eeff;
+  --lav2: #e4d5f7;
+  --lav3: #c4a8e0;
+  --lav4: #9b6fc8;
+  --lav5: #6b3fa0;
+  --pink: #f0c4e0;
+  --mint: #c4eee8;
+  --cream: #fdf8ff;
+  --text: #3d2060;
+  --sub:  #9080b0;
+  --card: #ffffff;
+  --shadow: 0 8px 32px rgba(155,111,200,.15);
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  min-height:100vh;
+  background: linear-gradient(160deg, #f3eeff 0%, #fdf0ff 40%, #ffe8f8 100%);
+  font-family: 'Noto Sans KR', sans-serif;
+  color: var(--text);
+  display:flex; flex-direction:column; align-items:center;
+  padding: 32px 16px 72px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* 배경 장식 */
+body::before {
+  content:'';
+  position:fixed; top:-120px; right:-80px;
+  width:340px; height:340px;
+  background: radial-gradient(circle, rgba(196,168,224,.35) 0%, transparent 70%);
+  border-radius:50%; pointer-events:none;
+}
+body::after {
+  content:'';
+  position:fixed; bottom:-100px; left:-60px;
+  width:280px; height:280px;
+  background: radial-gradient(circle, rgba(240,196,224,.3) 0%, transparent 70%);
+  border-radius:50%; pointer-events:none;
+}
+
+@keyframes fadeUp   { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+@keyframes float    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+@keyframes spin     { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+@keyframes shimmer  { 0%,100%{opacity:.6} 50%{opacity:1} }
+@keyframes pop      { 0%{transform:scale(1)} 50%{transform:scale(1.12)} 100%{transform:scale(1)} }
+
+/* 헤더 */
+.header { text-align:center; margin-bottom:28px; animation:fadeUp .5s ease both; }
+.deco-emoji { font-size:48px; display:block; margin-bottom:10px; animation:float 3s ease-in-out infinite; }
+.app-title {
+  font-family:'Gowun Dodum', serif;
+  font-size:clamp(24px,6vw,36px);
+  font-weight:400;
+  color: var(--lav5);
+  margin-bottom:6px;
+  letter-spacing:-.5px;
+}
+.app-sub { font-size:13px; color:var(--sub); }
+
+/* 스텝바 */
+.stepbar {
+  display:flex; gap:0;
+  background: rgba(255,255,255,.6);
+  backdrop-filter:blur(8px);
+  border-radius:20px; padding:5px;
+  width:100%; max-width:440px;
+  margin-bottom:20px;
+  border:1px solid var(--lav2);
+  box-shadow: var(--shadow);
+}
+.step {
+  flex:1; text-align:center; padding:8px 4px;
+  border-radius:16px; font-size:11px; font-weight:700;
+  color:var(--sub); transition:all .3s; letter-spacing:.02em;
+}
+.step.active { background:linear-gradient(135deg,var(--lav4),var(--lav3)); color:#fff; box-shadow:0 4px 12px rgba(155,111,200,.4); }
+.step.done   { color:var(--lav4); }
+
+/* 카드 */
+.card {
+  width:100%; max-width:440px;
+  background: rgba(255,255,255,.85);
+  backdrop-filter:blur(16px);
+  border-radius:28px;
+  padding:26px 22px;
+  border:1.5px solid var(--lav2);
+  box-shadow: var(--shadow);
+  animation:fadeUp .4s ease both;
+}
+
+/* 업로드존 */
+.upload-zone {
+  border:2px dashed var(--lav3);
+  border-radius:22px;
+  padding:44px 20px;
+  text-align:center;
+  cursor:pointer;
+  background: linear-gradient(135deg, rgba(243,238,255,.8), rgba(255,232,248,.8));
+  transition:all .25s;
+  position:relative;
+  overflow:hidden;
+}
+.upload-zone::before {
+  content:'';
+  position:absolute; inset:0;
+  background: radial-gradient(circle at 50% 0%, rgba(196,168,224,.2), transparent 60%);
+  pointer-events:none;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color:var(--lav4);
+  background:linear-gradient(135deg, rgba(228,213,247,.9), rgba(255,220,245,.9));
+  transform:scale(1.01);
+}
+.upload-icon { font-size:50px; display:block; margin-bottom:12px; }
+.upload-title { font-weight:700; font-size:16px; color:var(--lav5); margin-bottom:5px; }
+.upload-sub   { font-size:12px; color:var(--sub); }
+
+/* 버튼 */
+.btn {
+  padding:13px 18px; border-radius:16px; border:none;
+  cursor:pointer; font-family:inherit; font-weight:700;
+  font-size:14px; transition:all .2s; letter-spacing:.02em;
+}
+.btn:hover:not(:disabled) { transform:translateY(-1px); }
+.btn:active:not(:disabled) { transform:translateY(0); }
+.btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+.btn-main {
+  width:100%; padding:15px;
+  background:linear-gradient(135deg, var(--lav4), var(--lav5));
+  color:#fff; font-size:15px;
+  box-shadow:0 6px 20px rgba(107,63,160,.35);
+}
+.btn-main:hover:not(:disabled) { box-shadow:0 8px 24px rgba(107,63,160,.45); }
+.btn-blue {
+  background:linear-gradient(135deg,#6ab0e0,#4a90c8);
+  color:#fff; box-shadow:0 4px 16px rgba(74,144,200,.3);
+}
+.btn-lav {
+  background:linear-gradient(135deg,var(--lav4),var(--lav5));
+  color:#fff; box-shadow:0 4px 16px rgba(155,111,200,.35);
+}
+.btn-ghost {
+  background:rgba(196,168,224,.15);
+  border:1.5px solid var(--lav2);
+  color:var(--sub); width:100%; padding:11px;
+}
+
+/* 탭 */
+.tab-bar {
+  display:flex; background:var(--lav1);
+  border-radius:16px; padding:4px;
+  margin:14px 0;
+  border:1px solid var(--lav2);
+}
+.tab {
+  flex:1; text-align:center; padding:8px 4px;
+  border-radius:13px; font-size:12px; font-weight:700;
+  color:var(--sub); cursor:pointer; border:none;
+  background:transparent; font-family:inherit; transition:all .2s;
+}
+.tab.on {
+  background:white; color:var(--lav5);
+  box-shadow:0 2px 8px rgba(155,111,200,.2);
+}
+
+/* 이벤트 카드 */
+.ev-list { display:flex; flex-direction:column; gap:8px; max-height:370px; overflow-y:auto; padding-right:2px; }
+.ev-list::-webkit-scrollbar { width:4px; }
+.ev-list::-webkit-scrollbar-track { background:var(--lav1); border-radius:4px; }
+.ev-list::-webkit-scrollbar-thumb { background:var(--lav3); border-radius:4px; }
+
+.ev-row {
+  border-radius:18px; border:1.5px solid var(--lav2);
+  background:rgba(255,255,255,.9);
+  padding:13px 14px; transition:all .2s;
+}
+.ev-row.checked { border-color:var(--lav4); background:linear-gradient(135deg,rgba(243,238,255,.95),rgba(255,240,255,.95)); }
+.ev-row.dup-row { opacity:.6; background:rgba(245,242,250,.7); }
+.ev-head { display:flex; gap:11px; align-items:center; }
+
+.chk {
+  width:24px; height:24px; border-radius:8px; flex-shrink:0; cursor:pointer;
+  border:2px solid var(--lav3); display:flex; align-items:center; justify-content:center;
+  font-size:13px; color:#fff; background:transparent; transition:all .2s; user-select:none;
+}
+.chk.on { background:linear-gradient(135deg,var(--lav4),var(--lav5)); border-color:var(--lav5); animation:pop .2s ease; }
+.chk.disabled-chk { cursor:default; opacity:.45; font-size:11px; }
+
+.ev-date { text-align:center; min-width:40px; }
+.ev-date .mo { font-size:10px; color:var(--lav4); font-weight:700; }
+.ev-date .dd { font-size:24px; font-weight:900; color:var(--text); line-height:1; font-family:'Gowun Dodum',serif; }
+.ev-date .wd { font-size:10px; color:var(--sub); }
+
+.ev-info { flex:1; min-width:0; }
+.ev-title { font-weight:700; font-size:14px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ev-sub   { font-size:12px; color:var(--sub); margin-top:2px; }
+
+.badge-new { display:inline-block; font-size:10px; font-weight:700; color:#5a9a6a; background:#e0f5e8; border-radius:6px; padding:1px 7px; margin-left:5px; }
+.badge-dup { display:inline-block; font-size:10px; font-weight:700; color:var(--sub); background:var(--lav2); border-radius:6px; padding:1px 7px; margin-left:5px; }
+
+.notify-row {
+  margin-top:10px; padding-top:10px;
+  border-top:1px dashed var(--lav2);
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.notify-label { font-size:12px; color:var(--sub); white-space:nowrap; }
+.chips { display:flex; flex-wrap:wrap; gap:5px; }
+.chip {
+  padding:4px 11px; border-radius:20px; border:1.5px solid var(--lav2);
+  cursor:pointer; font-size:11px; font-weight:700;
+  background:white; color:var(--sub); font-family:inherit; transition:all .2s;
+}
+.chip.on { background:linear-gradient(135deg,var(--lav4),var(--lav5)); color:#fff; border-color:var(--lav5); }
+
+/* 요약 박스 */
+.stat-row {
+  display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;
+}
+.stat-box {
+  flex:1; min-width:80px;
+  background:linear-gradient(135deg,rgba(243,238,255,.9),rgba(255,240,255,.9));
+  border:1px solid var(--lav2); border-radius:16px;
+  padding:11px 14px; text-align:center;
+}
+.stat-num { font-size:22px; font-weight:900; color:var(--lav5); font-family:'Gowun Dodum',serif; }
+.stat-lbl { font-size:11px; color:var(--sub); margin-top:2px; }
+.stat-box.green .stat-num { color:#4a9a6a; }
+.stat-box.gray  .stat-num { color:var(--sub); }
+
+/* 알림 */
+.notice {
+  background:linear-gradient(135deg,rgba(243,238,255,.8),rgba(255,240,255,.8));
+  border:1px solid var(--lav2); border-radius:14px;
+  padding:11px 14px; font-size:12px; color:var(--lav5);
+  margin-bottom:10px;
+}
+
+/* 저장 목록 */
+.saved-item {
+  display:flex; gap:10px; align-items:center;
+  padding:10px 0; border-bottom:1px dashed var(--lav2);
+}
+.saved-item:last-child { border:none; }
+.saved-del {
+  font-size:13px; color:var(--pink); background:none;
+  border:none; cursor:pointer; padding:4px 8px;
+  border-radius:8px; flex-shrink:0; transition:background .15s;
+}
+.saved-del:hover { background:rgba(240,196,224,.3); }
+.empty-msg { text-align:center; padding:32px 0; color:var(--sub); font-size:14px; }
+
+/* 분석중 */
+.analyzing { text-align:center; padding:56px 0; }
+.spin-wrap { font-size:52px; display:inline-block; animation:spin 1.8s linear infinite; margin-bottom:18px; }
+.shimmer   { color:var(--sub); font-size:14px; animation:shimmer 1.5s ease-in-out infinite; margin-top:8px; }
+
+/* 완료 */
+.done-box {
+  background:linear-gradient(135deg,rgba(243,238,255,.9),rgba(255,240,255,.9));
+  border:1px solid var(--lav2); border-radius:18px;
+  padding:14px 16px; margin:14px 0;
+}
+.done-item { display:flex; gap:10px; align-items:flex-start; padding:6px 0; border-bottom:1px dashed var(--lav2); }
+.done-item:last-child { border:none; }
+
+.total-badge {
+  background:linear-gradient(135deg,var(--lav3),var(--pink));
+  border-radius:12px; padding:10px 16px;
+  font-size:13px; color:var(--lav5); text-align:center;
+  margin-bottom:16px; font-weight:700;
+}
+
+/* 설정 박스 */
+.setup-box {
+  background:linear-gradient(135deg,rgba(243,238,255,.8),rgba(255,240,255,.8));
+  border:1.5px dashed var(--lav3); border-radius:20px;
+  padding:20px; margin-bottom:16px;
+}
+.setup-title { font-size:15px; font-weight:700; color:var(--lav5); margin-bottom:10px; }
+.setup-steps { list-style:none; font-size:13px; color:var(--sub); display:flex; flex-direction:column; gap:6px; }
+.setup-steps li::before { content:"✦ "; color:var(--lav4); }
+.setup-steps a { color:var(--lav4); font-weight:700; }
+
+input[type=text] {
+  width:100%; padding:12px 15px;
+  border:1.5px solid var(--lav2); border-radius:14px;
+  font-size:14px; background:rgba(255,255,255,.9);
+  margin-top:10px; outline:none; font-family:inherit;
+  color:var(--text); transition:border .2s;
+}
+input[type=text]:focus { border-color:var(--lav4); }
+
+.key-line { display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.key-badge { font-size:12px; color:#5a9a6a; background:#e8f8ee; border:1px solid #b8e8c8; border-radius:10px; padding:5px 12px; font-weight:700; }
+.key-change { font-size:11px; color:var(--lav4); background:none; border:none; cursor:pointer; font-family:inherit; text-decoration:underline; }
+
+/* 에러 */
+.err-box { margin-top:14px; padding:13px; background:rgba(255,200,200,.3); border:1px solid rgba(220,100,100,.3); border-radius:14px; color:#c05050; font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="deco-emoji">🌸</span>
+  <div class="app-title">달력 스캐너</div>
+  <div class="app-sub">찍으면 바로 일정 등록 · 손글씨도 OK 💜</div>
+</div>
+
+<div class="stepbar">
+  <div class="step active" id="s0">📷 업로드</div>
+  <div class="step" id="s1">✨ 분석 중</div>
+  <div class="step" id="s2">💜 확인</div>
+  <div class="step" id="s3">🎀 완료</div>
+</div>
+
+<div class="card" id="card"></div>
+
+<div style="margin-top:20px;font-size:11px;color:var(--sub);text-align:center">
+  사진은 분석 후 저장되지 않아요 🌸
+</div>
+
+<script>
+// ── 상태 ─────────────────────────────────────────────
+let S = {
+  step:"upload", tab:"scan",
+  imgB64:null, imgPrev:null, imgMime:"image/jpeg",
+  events:[], sel:{}, notify:{},
+  error:null, result:null,
+};
+
+const WD=["일","월","화","수","목","금","토"];
+const MO=["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+const PRESETS=[{l:"오전 7:00",v:"07:00"},{l:"오전 8:30",v:"08:30"},{l:"오전 9:00",v:"09:00"},{l:"낮 12:00",v:"12:00"},{l:"직접 입력",v:"custom"}];
+
+// ── DB ───────────────────────────────────────────────
+const DB={
+  get:()=>{try{return JSON.parse(localStorage.getItem("cs_ev")||"[]")}catch{return[]}},
+  set:a=>localStorage.setItem("cs_ev",JSON.stringify(a)),
+};
+const norm=s=>(s||"").toLowerCase().replace(/\s+/g,"").replace(/[^\w가-힣]/g,"");
+const isDup=ev=>DB.get().some(s=>s.date===ev.date&&norm(s.title)===norm(ev.title));
+
+// ── ICS ─────────────────────────────────────────────
+function makeICS(evs){
+  const p=n=>String(n).padStart(2,"0");
+  const ts=(date,time)=>{const d=new Date(date+"T"+(time||"00:00")+":00");return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"T"+p(d.getHours())+p(d.getMinutes())+"00";};
+  const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//CalScanner//KO","CALSCALE:GREGORIAN"];
+  evs.forEach(ev=>{
+    let alarm=[];
+    if(ev.notifyTime&&ev.time){const[nh,nm]=ev.notifyTime.split(":").map(Number),[eh,em]=ev.time.split(":").map(Number),diff=(eh*60+em)-(nh*60+nm);if(diff>0)alarm=["BEGIN:VALARM",`TRIGGER:-PT${diff}M`,"ACTION:DISPLAY",`DESCRIPTION:🌸 ${ev.title}`,"END:VALARM"];}
+    else if(ev.notifyTime){alarm=["BEGIN:VALARM",`TRIGGER;VALUE=DATE-TIME:${ts(ev.date,ev.notifyTime)}`,"ACTION:DISPLAY",`DESCRIPTION:🌸 ${ev.title}`,"END:VALARM"];}
+    lines.push("BEGIN:VEVENT",`UID:${Date.now()}-${Math.random().toString(36).slice(2)}`,`DTSTART:${ts(ev.date,ev.time)}`,`DTEND:${ts(ev.date,ev.time||"01:00")}`,`SUMMARY:${ev.title}`,...(ev.notes?[`DESCRIPTION:${ev.notes}`]:[]),...alarm,"END:VEVENT");
+  });
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n");
+}
+function dlICS(evs){const b=new Blob([makeICS(evs)],{type:"text/calendar;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="schedule.ics";a.click();}
+
+// ── 알림 복구 ────────────────────────────────────────
+function restoreAlarms(){
+  try{if(Notification.permission!=="granted")return;const now=Date.now();DB.get().forEach(ev=>{if(!ev.notifyTime)return;const d=new Date(ev.date+"T"+ev.notifyTime+":00"),delay=d.getTime()-now;if(delay>0&&delay<7*864e5)setTimeout(()=>new Notification(`🌸 ${ev.title}`,{body:`${ev.date} ${ev.time||""}`.trim()}),delay);});}catch{}
+}
+
+// ── 렌더 ────────────────────────────────────────────
+function render(){
+  stepBar();
+  document.getElementById("card").innerHTML=({upload:rUpload,analyzing:rAnalyzing,review:rReview,done:rDone})[S.step]();
+  bindDrop();
+}
+function stepBar(){const idx=["upload","analyzing","review","done"].indexOf(S.step);for(let i=0;i<4;i++){const e=document.getElementById("s"+i);e.className="step"+(i===idx?" active":i<idx?" done":"");}}
+
+// ── UPLOAD ──────────────────────────────────────────
+function rUpload(){
+  const saved=DB.get();
+  const tabs=`<div class="tab-bar"><button class="tab ${S.tab==="scan"?"on":""}" onclick="setTab('scan')">📷 달력 스캔</button><button class="tab ${S.tab==="saved"?"on":""}" onclick="setTab('saved')">🗓 저장된 일정${saved.length>0?" ("+saved.length+")":""}</button></div>`;
+
+  if(S.tab==="saved"){
+    const sorted=saved.slice().sort((a,b)=>a.date.localeCompare(b.date));
+    const items=sorted.length===0?`<div class="empty-msg">아직 저장된 일정이 없어요 🌸</div>`:sorted.map((ev,i)=>{
+      const d=new Date(ev.date+"T00:00:00"),vd=!isNaN(d);
+      return `<div class="saved-item">
+        <div class="ev-date"><div class="mo">${vd?MO[d.getMonth()]:""}</div><div class="dd">${vd?d.getDate():"?"}</div><div class="wd">${vd?WD[d.getDay()]:""}</div></div>
+        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.title}</div>
+        <div style="font-size:12px;color:var(--sub)">${vd?WD[d.getDay()]+"요일":ev.date}${ev.time?" · "+ev.time:""}${ev.notifyTime?" · 🔔 "+ev.notifyTime:""}</div></div>
+        <button class="saved-del" onclick="delEv(${i})">✕</button></div>`;
+    }).join("");
+    const clr=sorted.length>0?`<button class="btn btn-ghost" style="margin-top:12px;font-size:13px;color:var(--pink)" onclick="clrAll()">전체 삭제</button>`:"";
+    return tabs+items+clr;
+  }
+
+  const zone=S.imgPrev
+    ?`<div style="position:relative;border-radius:18px;overflow:hidden;background:var(--lav1)">
+        <img src="${S.imgPrev}" style="width:100%;max-height:280px;object-fit:contain;display:block"/>
+        <button onclick="rstImg()" style="position:absolute;top:10px;right:10px;background:rgba(107,63,160,.7);color:#fff;border:none;border-radius:10px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit">✕ 다시 선택</button>
+       </div>
+       <button class="btn btn-main" style="margin-top:14px" onclick="doAnalyze()">✨ AI가 일정 읽기</button>`
+    :`<div class="upload-zone" id="dz" onclick="document.getElementById('fi').click()">
+        <span class="upload-icon">📷</span>
+        <div class="upload-title">달력 사진을 올려주세요</div>
+        <div class="upload-sub">드래그 또는 클릭 · 카메라 직접 촬영 가능 💜</div>
+      </div>
+      <input type="file" id="fi" accept="image/*" capture="environment" style="display:none" onchange="onFile(event)">`;
+
+  const err=S.error?`<div class="err-box">⚠️ ${S.error}</div>`:"";
+  return tabs+zone+err;
+}
+
+// ── ANALYZING ───────────────────────────────────────
+function rAnalyzing(){return`<div class="analyzing"><div class="spin-wrap">🔮</div><div style="font-weight:700;font-size:18px;color:var(--lav5)">달력을 읽고 있어요</div><div class="shimmer">손글씨도 꼼꼼히 확인 중이에요 🌸</div></div>`;}
+
+// ── REVIEW ──────────────────────────────────────────
+function rReview(){
+  const newEvs=S.events.filter(e=>!e.isDup),dupEvs=S.events.filter(e=>e.isDup);
+  const newIdxs=S.events.map((_,i)=>i).filter(i=>!S.events[i].isDup);
+  const selCnt=newIdxs.filter(i=>S.sel[i]).length;
+  const allNew=newIdxs.length>0&&newIdxs.every(i=>S.sel[i]);
+
+  const rows=S.events.map((ev,i)=>{
+    const d=new Date(ev.date+"T00:00:00"),vd=!isNaN(d);
+    const sel=S.sel[i],nt=S.notify[i]||"09:00";
+    const isCust=!PRESETS.slice(0,-1).find(p=>p.v===nt);
+    const chips=PRESETS.map(p=>{const on=p.v==="custom"?isCust:nt===p.v;return`<button class="chip${on?" on":""}" onclick="chip(${i},'${p.v}')">${p.v==="custom"?(isCust?`⏰${nt}`:p.l):p.l}</button>`;}).join("");
+    const chkEl=ev.isDup?`<div class="chk disabled-chk" title="이미 저장됨">–</div>`:`<div class="chk${sel?" on":""}" onclick="tog(${i})">${sel?"✓":""}</div>`;
+    const bdg=ev.isDup?`<span class="badge-dup">이미 저장됨</span>`:`<span class="badge-new">새 일정</span>`;
+    return`<div class="ev-row${sel?" checked":""}${ev.isDup?" dup-row":""}">
+      <div class="ev-head">${chkEl}
+        <div class="ev-date"><div class="mo">${vd?MO[d.getMonth()]:""}</div><div class="dd">${vd?d.getDate():"?"}</div><div class="wd">${vd?WD[d.getDay()]+"요":""}</div></div>
+        <div class="ev-info"><div class="ev-title">${ev.title}${bdg}</div><div class="ev-sub">${ev.time?"⏰ "+ev.time:"시간 미정"}${ev.notes?" · "+ev.notes:""}</div></div>
+      </div>
+      ${sel?`<div class="notify-row"><span class="notify-label">🔔 알림</span><div class="chips">${chips}</div></div>`:""}
+    </div>`;
+  }).join("");
+
+  const stats=`<div class="stat-row">
+    <div class="stat-box"><div class="stat-num">${S.events.length}</div><div class="stat-lbl">전체 인식</div></div>
+    <div class="stat-box green"><div class="stat-num">${newEvs.length}</div><div class="stat-lbl">새 일정 ✨</div></div>
+    ${dupEvs.length>0?`<div class="stat-box gray"><div class="stat-num">${dupEvs.length}</div><div class="stat-lbl">중복 제외</div></div>`:""}
+  </div>`;
+
+  const noNew=newEvs.length===0?`<div style="text-align:center;padding:24px 0;color:var(--sub);font-size:14px">🎉 모두 이미 저장된 일정이에요!<br><span style="font-size:12px">새로 추가할 일정이 없어요</span></div>`:"";
+
+  const hdr=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="font-weight:800;font-size:16px;color:var(--lav5)">💜 일정 확인 & 알림 설정</div>
+    ${newEvs.length>0?`<button onclick="togAll()" style="font-size:12px;color:var(--lav4);background:var(--lav1);border:1px solid var(--lav2);border-radius:10px;padding:5px 10px;cursor:pointer;font-weight:700">새 일정 전체 ${allNew?"해제":"선택"}</button>`:""}
+  </div>`;
+
+  const btns=newEvs.length>0?`<div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
+    <div class="notice">💡 <b>아이폰/갤럭시</b>에서는 .ics 저장 후 파일 열기가 제일 확실해요!</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-blue" style="flex:1;padding:13px 8px;font-weight:800" onclick="fin('ics')" ${selCnt===0?"disabled":""}>📥 .ics 저장<br><span style="font-size:11px;font-weight:400;opacity:.85">캘린더 앱 알림</span></button>
+      <button class="btn btn-lav" style="flex:1;padding:13px 8px;font-weight:800" onclick="fin('web')" ${selCnt===0?"disabled":""}>🔔 브라우저 알림<br><span style="font-size:11px;font-weight:400;opacity:.85">탭 열려있을 때</span></button>
+    </div>
+    <button class="btn btn-ghost" onclick="rst()">← 처음으로</button>
+  </div>`:`<button class="btn btn-main" style="margin-top:16px" onclick="rst()">새 달력 스캔하기 📷</button>`;
+
+  return hdr+stats+noNew+`<div class="ev-list">${rows}</div>`+btns;
+}
+
+// ── DONE ────────────────────────────────────────────
+function rDone(){
+  const added=S.events.filter((_,i)=>S.sel[i]&&!S.events[i].isDup);
+  const res=S.result;
+  const icon=res==="ics"?"📥":res==="web"?"🔔":"⚠️";
+  const title=res==="ics"?"저장 완료! 🎀":res==="web"?"알림 등록 완료! 💜":"알림 권한이 없어요";
+  const msg=res==="ics"?"파일 앱에서 열면 캘린더에 등록돼요.\n설정한 시간에 알림이 정확히 와요 🌸":res==="web"?"설정한 시간에 브라우저 알림이 도착해요 💜":"브라우저 알림 권한을 허용해주세요.";
+  const items=added.map(ev=>{const nt=S.notify[S.events.indexOf(ev)];return`<div class="done-item"><span style="font-size:15px">🌸</span><div><div style="font-size:13px;font-weight:700;color:var(--text)">${ev.title}</div><div style="font-size:11px;color:var(--sub)">${ev.date}${ev.time?" "+ev.time:""}${nt?" · 🔔 "+nt:""}</div></div></div>`;}).join("");
+  return`<div style="text-align:center;padding:20px 0 14px">
+    <div style="font-size:56px;margin-bottom:12px;animation:float 3s ease-in-out infinite">${icon}</div>
+    <div style="font-weight:900;font-size:22px;color:var(--lav5);margin-bottom:8px">${title}</div>
+    <div style="color:var(--sub);font-size:13px;white-space:pre-line">${msg}</div>
+  </div>
+  ${added.length>0?`<div class="done-box">${items}</div>`:""}
+  <div class="total-badge">총 저장된 일정 ${DB.get().length}개 💜</div>
+  <button class="btn btn-main" onclick="rst()">새 달력 스캔하기 🌸</button>`;
+}
+
+// ── 액션 ────────────────────────────────────────────
+function setTab(t){S.tab=t;render();}
+function onFile(e){const f=e.target.files[0];if(!f)return;S.imgMime=f.type||"image/jpeg";const r=new FileReader();r.onload=ev=>{S.imgPrev=ev.target.result;S.imgB64=ev.target.result.split(",")[1];render();};r.readAsDataURL(f);}
+function rstImg(){S.imgPrev=null;S.imgB64=null;render();}
+function rst(){Object.assign(S,{step:"upload",tab:"scan",imgB64:null,imgPrev:null,events:[],sel:{},notify:{},error:null,result:null});render();}
+function delEv(i){const s=DB.get().slice().sort((a,b)=>a.date.localeCompare(b.date)),t=s[i];DB.set(DB.get().filter(e=>!(e.date===t.date&&norm(e.title)===norm(t.title))));render();}
+function clrAll(){if(confirm("저장된 일정을 모두 삭제할까요? 🌸")){DB.set([]);render();}}
+function tog(i){if(S.events[i]?.isDup)return;S.sel[i]=!S.sel[i];render();}
+function togAll(){const ni=S.events.map((_,i)=>i).filter(i=>!S.events[i].isDup),all=ni.every(i=>S.sel[i]);ni.forEach(i=>S.sel[i]=!all);render();}
+function chip(i,v){if(v==="custom"){const t=prompt("알림 시간을 입력해주세요 (예: 14:30) 🌸",S.notify[i]||"09:00");if(t&&/^\d{2}:\d{2}$/.test(t)){S.notify[i]=t;render();}}else{S.notify[i]=v;render();}}
+
+async function doAnalyze(){
+  if(!S.imgB64)return;
+  S.step="analyzing";render();
+  try{
+    const res=await fetch("/api/analyze",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({imageB64:S.imgB64,mimeType:S.imgMime})
+    });
+    const data=await res.json();
+    if(data.error)throw new Error(data.error);
+    const parsed=data.events||[];
+    if(parsed.length===0)throw new Error("일정을 찾지 못했어요 🌸 더 선명하게 찍어보세요!");
+    const withDup=parsed.map(ev=>({...ev,isDup:isDup(ev)}));
+    const sel={},nt={};withDup.forEach((ev,i)=>{sel[i]=!ev.isDup;nt[i]="09:00";});
+    S.events=withDup;S.sel=sel;S.notify=nt;S.step="review";
+  }catch(e){S.error=e.message;S.step="upload";}
+  render();
+}
+
+async function fin(mode){
+  const toSave=S.events.filter((_,i)=>S.sel[i]&&!S.events[i].isDup);
+  if(!toSave.length)return;
+  const withNt=toSave.map((ev,_,a,idx=S.events.indexOf(ev))=>({...ev,notifyTime:S.notify[idx]}));
+  DB.set([...DB.get(),...withNt]);
+  if(mode==="ics"){dlICS(withNt);S.result="ics";}
+  else{
+    if(!("Notification"in window)){alert("이 브라우저는 알림을 지원하지 않아요");return;}
+    const perm=await Notification.requestPermission();
+    if(perm!=="granted"){S.result="denied";S.step="done";render();return;}
+    const now=Date.now();
+    withNt.forEach(ev=>{if(!ev.notifyTime)return;const d=new Date(ev.date+"T"+ev.notifyTime+":00"),delay=d.getTime()-now;if(delay>0&&delay<7*864e5)setTimeout(()=>new Notification(`🌸 ${ev.title}`,{body:`${ev.date} ${ev.time||""}`.trim()}),delay);});
+    S.result="web";
+  }
+  S.step="done";render();
+}
+
+function bindDrop(){
+  const z=document.getElementById("dz");if(!z)return;
+  z.addEventListener("dragover",e=>{e.preventDefault();z.classList.add("dragover");});
+  z.addEventListener("dragleave",()=>z.classList.remove("dragover"));
+  z.addEventListener("drop",e=>{e.preventDefault();z.classList.remove("dragover");const f=e.dataTransfer.files[0];if(!f)return;S.imgMime=f.type||"image/jpeg";const r=new FileReader();r.onload=ev=>{S.imgPrev=ev.target.result;S.imgB64=ev.target.result.split(",")[1];render();};r.readAsDataURL(f);});
+}
+
+restoreAlarms();
+render();
+</script>
+</body>
+</html>
