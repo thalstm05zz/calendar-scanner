@@ -487,7 +487,21 @@ function rDone(){
 
 // ── 액션 ────────────────────────────────────────────
 function setTab(t){S.tab=t;render();}
-function onFile(e){const f=e.target.files[0];if(!f)return;S.imgMime=f.type||"image/jpeg";const r=new FileReader();r.onload=ev=>{S.imgPrev=ev.target.result;S.imgB64=ev.target.result.split(",")[1];render();};r.readAsDataURL(f);}
+function compressImage(dataUrl, maxWidth, quality, callback){
+  const img=new Image();
+  img.onload=()=>{
+    const canvas=document.createElement("canvas");
+    let w=img.width, h=img.height;
+    if(w>maxWidth){h=Math.round(h*maxWidth/w);w=maxWidth;}
+    canvas.width=w; canvas.height=h;
+    const ctx=canvas.getContext("2d");
+    ctx.drawImage(img,0,0,w,h);
+    const compressed=canvas.toDataURL("image/jpeg", quality);
+    callback(compressed);
+  };
+  img.src=dataUrl;
+}
+function onFile(e){const f=e.target.files[0];if(!f)return;S.imgMime="image/jpeg";const r=new FileReader();r.onload=ev=>{compressImage(ev.target.result,1200,0.7,compressed=>{S.imgPrev=compressed;S.imgB64=compressed.split(",")[1];render();});};r.readAsDataURL(f);}
 function rstImg(){S.imgPrev=null;S.imgB64=null;render();}
 function rst(){Object.assign(S,{step:"upload",tab:"scan",imgB64:null,imgPrev:null,events:[],sel:{},notify:{},error:null,result:null});render();}
 function delEv(i){const s=DB.get().slice().sort((a,b)=>a.date.localeCompare(b.date)),t=s[i];DB.set(DB.get().filter(e=>!(e.date===t.date&&norm(e.title)===norm(t.title))));render();}
@@ -537,7 +551,7 @@ function bindDrop(){
   const z=document.getElementById("dz");if(!z)return;
   z.addEventListener("dragover",e=>{e.preventDefault();z.classList.add("dragover");});
   z.addEventListener("dragleave",()=>z.classList.remove("dragover"));
-  z.addEventListener("drop",e=>{e.preventDefault();z.classList.remove("dragover");const f=e.dataTransfer.files[0];if(!f)return;S.imgMime=f.type||"image/jpeg";const r=new FileReader();r.onload=ev=>{S.imgPrev=ev.target.result;S.imgB64=ev.target.result.split(",")[1];render();};r.readAsDataURL(f);});
+  z.addEventListener("drop",e=>{e.preventDefault();z.classList.remove("dragover");const f=e.dataTransfer.files[0];if(!f)return;S.imgMime="image/jpeg";const r=new FileReader();r.onload=ev=>{compressImage(ev.target.result,1200,0.7,compressed=>{S.imgPrev=compressed;S.imgB64=compressed.split(",")[1];render();});};r.readAsDataURL(f);});
 }
 
 restoreAlarms();
@@ -545,3 +559,5 @@ render();
 </script>
 </body>
 </html>
+
+
