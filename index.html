@@ -410,7 +410,7 @@ function rUpload(){
         <div class="upload-title">달력 사진을 올려주세요</div>
         <div class="upload-sub">드래그 또는 클릭 · 카메라 직접 촬영 가능 💜</div>
       </div>
-      <input type="file" id="fi" accept="image/*" capture="environment" style="display:none" onchange="onFile(event)">`;
+      <input type="file" id="fi" accept="image/*" style="display:none" onchange="onFile(event)">`;
 
   const err=S.error?`<div class="err-box">⚠️ ${S.error}</div>`:"";
   return tabs+zone+err;
@@ -506,7 +506,15 @@ function rstImg(){S.imgPrev=null;S.imgB64=null;render();}
 function rst(){Object.assign(S,{step:"upload",tab:"scan",imgB64:null,imgPrev:null,events:[],sel:{},notify:{},error:null,result:null});render();}
 function delEv(i){const s=DB.get().slice().sort((a,b)=>a.date.localeCompare(b.date)),t=s[i];DB.set(DB.get().filter(e=>!(e.date===t.date&&norm(e.title)===norm(t.title))));render();}
 function clrAll(){if(confirm("저장된 일정을 모두 삭제할까요? 🌸")){DB.set([]);render();}}
-function tog(i){if(S.events[i]?.isDup)return;S.sel[i]=!S.sel[i];render();}
+function tog(i){
+  if(S.events[i]?.isDup)return;
+  const list=document.querySelector(".ev-list");
+  const scrollTop=list?list.scrollTop:0;
+  S.sel[i]=!S.sel[i];
+  render();
+  const newList=document.querySelector(".ev-list");
+  if(newList)newList.scrollTop=scrollTop;
+}
 function togAll(){const ni=S.events.map((_,i)=>i).filter(i=>!S.events[i].isDup),all=ni.every(i=>S.sel[i]);ni.forEach(i=>S.sel[i]=!all);render();}
 function chip(i,v){if(v==="custom"){const t=prompt("알림 시간을 입력해주세요 (예: 14:30) 🌸",S.notify[i]||"09:00");if(t&&/^\d{2}:\d{2}$/.test(t)){S.notify[i]=t;render();}}else{S.notify[i]=v;render();}}
 
@@ -559,5 +567,3 @@ render();
 </script>
 </body>
 </html>
-
-
